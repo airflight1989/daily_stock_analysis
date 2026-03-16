@@ -117,7 +117,7 @@ class BotPlatform(ABC):
         ...
 
     @abstractmethod
-    def format_response(self, response: BotResponse) -> Dict:
+    def format_response(self, response: BotResponse, message: BotMessage) -> WebhookResponse:
         """Convert unified response to platform format"""
         ...
 ```
@@ -166,17 +166,27 @@ class BotCommand(ABC):
 
 ## 5. Webhook Routes
 
-The handler functions live in `bot/handler.py` (`handle_feishu_webhook`, `handle_dingtalk_webhook`, etc.).
-The routes below are **planned** — they are not yet wired into the FastAPI application but are ready to be registered:
+Handler functions for each platform live in `bot/handler.py`.
+These routes are **not yet wired** into the FastAPI application — you must mount them manually.
 
-| Route | Method | Platform |
-|-------|--------|----------|
-| `/bot/feishu` | POST | Feishu (Lark) event callback |
-| `/bot/dingtalk` | POST | DingTalk event callback |
-| `/bot/wecom` | POST | WeChat Work event callback |
-| `/bot/telegram` | POST | Telegram update callback |
+| Route | Method | Status | Notes |
+|-------|--------|--------|-------|
+| `/bot/dingtalk` | POST | **Ready** | `DingtalkPlatform` is registered in `ALL_PLATFORMS` |
+| `/bot/feishu` | POST | Stream only | Use `feishu_stream.py`; no Webhook adapter in `ALL_PLATFORMS` |
+| `/bot/wecom` | POST | Not implemented | Handler exists but no platform adapter |
+| `/bot/telegram` | POST | Not implemented | Handler exists but no platform adapter |
 
-To enable, mount each handler in your FastAPI app or `api/app.py` using `@app.post("/bot/<platform>")`.
+To mount the DingTalk webhook in your FastAPI app:
+
+```python
+from bot.handler import handle_dingtalk_webhook
+
+@app.post("/bot/dingtalk")
+async def dingtalk_webhook(request: Request):
+    headers = dict(request.headers)
+    body = await request.body()
+    return handle_dingtalk_webhook(headers, body)
+```
 
 ---
 
